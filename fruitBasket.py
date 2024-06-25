@@ -1,196 +1,236 @@
 import pygame
-import time
+import math
 import random
+import os
+import time
+# Constants
+HIGHSCORE_FILE = "highscore.txt"
+SCREEN_WIDTH = 400
+SCREEN_HEIGHT = 600
+FRUIT_FALL_SPEED = 5
+FRUIT_RADIUS = 15
+NUM_FRUITS = 3
+BOMB_FALL_SPEED = 5
+BOMB_RADIUS = 15
+
 class Fruit:
-    def __init__(self,screen,x,y):
-        self.parentScreen=screen
-        fruits=["resources/fruit1.png","resources/fruit2.png","resources/fruit3.png","resources/fruit4.png","resources/fruit5.png"]
-        self.img=pygame.image.load(random.choice(fruits))
-        self.x=x
-        self.y=y
+    def __init__(self, screen, x, y, img):
+        self.parentScreen = screen
+        self.img = pygame.image.load(img)
+        self.fruitX = x
+        self.fruitY = y
+        self.fruitXcenter = self.fruitX + self.img.get_width() // 2
+        self.fruitYcenter = self.fruitY + self.img.get_height() // 2
 
     def draw(self):
-        self.parentScreen.blit(self.img,(self.x,self.y))
-        #pygame.display.update()
+        self.parentScreen.blit(self.img, (self.fruitX, self.fruitY))
 
     def moveDown(self):
-        if self.y<=533:
-            self.y+=5
-            #self.posUpdate()
-            self.draw()
+        if self.fruitY <= SCREEN_HEIGHT - self.img.get_height():
+            self.fruitY += FRUIT_FALL_SPEED
         else:
-            self.y=0
-            #self.posUpdate()
-            self.draw()
+            self.fruitY = 0
+            self.fruitX = random.randint(0, SCREEN_WIDTH - self.img.get_width())
+        self.fruitXcenter = self.fruitX + self.img.get_width() // 2
+        self.fruitYcenter = self.fruitY + self.img.get_height() // 2
+        self.draw()
 
-
-    
-
-class Basket:
-    def __init__(self,screen,x,y):
-        self.parentScreen=screen
-        self.img=pygame.image.load("resources/basket.png")
-        self.x=x
-        self.y=y
+class Bomb:
+    def __init__(self, screen, x, y, img):
+        self.parentScreen = screen
+        self.img = pygame.image.load(img)
+        self.bombX = x
+        self.bombY = y
+        self.bombXcenter = self.bombX + self.img.get_width() // 2
+        self.bombYcenter = self.bombY + self.img.get_height() // 2
 
     def draw(self):
-        self.parentScreen.blit(self.img,(self.x,self.y))
-        pygame.display.update() 
+        self.parentScreen.blit(self.img, (self.bombX, self.bombY))
+
+    def moveDown(self):
+        if self.bombY <= SCREEN_HEIGHT - self.img.get_height():
+            self.bombY += BOMB_FALL_SPEED
+        else:
+            self.bombY = 0
+            self.bombX = random.randint(0, SCREEN_WIDTH - self.img.get_width())
+        self.bombXcenter = self.bombX + self.img.get_width() // 2
+        self.bombYcenter = self.bombY + self.img.get_height() // 2
+        self.draw()
+
+class Basket:
+    def __init__(self, screen, x, y):
+        self.parentScreen = screen
+        self.img = pygame.image.load("resources/basket.png")
+        self.x = x
+        self.y = y
+        self.xCenter = self.x + self.img.get_width() // 2
+        self.yCenter = self.y + self.img.get_height() // 2
+
+    def draw(self):
+        self.parentScreen.blit(self.img, (self.x, self.y))
 
     def moveRight(self):
-        if self.x<=215:
-            self.x+=50
-            #self.posUpdate()
+        if self.x <= SCREEN_WIDTH - self.img.get_width():
+            self.x += 50
+            self.xCenter = self.x + self.img.get_width() // 2
             self.draw()
 
     def moveLeft(self):
-        if self.x>=5:
-            self.x-=50
-            #self.posUpdate()
+        if self.x >= 50:
+            self.x -= 50
+            self.xCenter = self.x + self.img.get_width() // 2
             self.draw()
-
-        
 
 class Game:
     def __init__(self):
         pygame.init()
-        print("init entered")
-        self.screen=pygame.display.set_mode((400,600))
-        self.screen.fill((200,250,180))
+        pygame.mixer.init()
+        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        self.screen.fill((200, 250, 180))
         pygame.display.update()
-        x=0
-        y=500
-        self.basket=Basket(self.screen,x,y)
+        self.playBackGround()
+        self.basket = Basket(self.screen, 0, SCREEN_HEIGHT - 100)
         self.basket.draw()
-        print("basket")
 
-        fruitList=[]
-        x=self.setX()
-        y=self.setY()
-        self.fruit1=Fruit(self.screen,x,y)
-        self.fruit1.draw()
-        if self.fruit1 not in fruitList:
-            fruitList.append(self.fruit1)
+        fruit_images = random.sample(["resources/fruit2.png", "resources/fruit3.png", "resources/fruit4.png", "resources/fruit5.png"], NUM_FRUITS)
+        self.fruits = [Fruit(self.screen, random.randint(0, SCREEN_WIDTH), random.randint(0, SCREEN_HEIGHT), img) for img in fruit_images]
 
-        # x=self.setX()
-        # y=self.setY()
-        # self.fruit2=Fruit(self.screen,x,y)
-        # self.fruit2.draw()
-        # fruitList.append(self.fruit2)
+        self.bomb = Bomb(self.screen, random.randint(0, SCREEN_WIDTH), random.randint(0, SCREEN_HEIGHT), "resources/block.jpg")
 
-        # x=self.setX()
-        # y=self.setY()
-        # self.fruit3=Fruit(self.screen,x,y)
-        # self.fruit3.draw()
-        # fruitList.append(self.fruit3)
+        self.score = 0
+        self.high_score = self.load_high_score()
+        self.game_over = False
 
-        # x=self.setX()
-        # y=self.setY()
-        # self.fruit4=Fruit(self.screen,x,y)
-        # self.fruit4.draw()
-        # fruitList.append(self.fruit4)
+    def load_high_score(self):
+        if os.path.exists(HIGHSCORE_FILE):
+            with open(HIGHSCORE_FILE, "r") as file:
+                return int(file.read())
+        return 0
 
-        # x=self.setX()
-        # y=self.setY()
-        # self.fruit5=Fruit(self.screen,x,y)
-        # self.fruit5.draw()
-        # fruitList.append(self.fruit5)
+    def save_high_score(self):
+        with open(HIGHSCORE_FILE, "w") as file:
+            file.write(str(self.high_score))
 
-        self.score=0
-        #time.sleep(2)
-    def setX(self):
-        x=random.randint(0,400)
-        return x
-    def setY(self):
-        y=random.randint(0,250)
-        return y
-    
-    def IncreaseScore(self,score):
-        if self.isCollide() is True:
-            self.score=(self.score+1)
-            print(score)
+    def reset(self):
+        self.basket = Basket(self.screen, 0, SCREEN_HEIGHT - 100)
+        fruit_images = random.sample(["resources/fruit2.png", "resources/fruit3.png", "resources/fruit4.png", "resources/fruit5.png"], NUM_FRUITS)
+        self.fruits = [Fruit(self.screen, random.randint(0, SCREEN_WIDTH), random.randint(0, SCREEN_HEIGHT), img) for img in fruit_images]
+        self.bomb = Bomb(self.screen, random.randint(0, SCREEN_WIDTH), random.randint(0, SCREEN_HEIGHT), "resources/block.jpg")
+        self.score = 0
+        self.game_over = False
 
-    def isCollide(self):
-    # Calculate the center coordinates of the basket and each fruit
-        basket_center_x = self.basket.x + self.basket.img.get_width() // 2
-        basket_center_y = self.basket.y + self.basket.img.get_height() // 2
-        fruit_center_x_list = [
-            self.fruit1.x + self.fruit1.img.get_width() // 2,
-            # self.fruit2.x + self.fruit2.img.get_width() // 2,
-            # self.fruit3.x + self.fruit3.img.get_width() // 2,
-            # self.fruit4.x + self.fruit4.img.get_width() // 2,
-            # self.fruit5.x + self.fruit5.img.get_width() // 2,
-        ]
-        fruit_center_y_list = [
-            self.fruit1.y + self.fruit1.img.get_height() // 2,
-            # self.fruit2.y + self.fruit2.img.get_height() // 2,
-            # self.fruit3.y + self.fruit3.img.get_height() // 2,
-            # self.fruit4.y + self.fruit4.img.get_height() // 2,
-            # self.fruit5.y + self.fruit5.img.get_height() // 2,
-        ]
+    def displayScore(self):
+        font = pygame.font.SysFont('arial', 30)
+        score = font.render(f"Score: {self.score}", True, (0, 0, 0))
+        self.screen.blit(score, (10, 10))
+        high_score = font.render(f"High Score: {self.high_score}", True, (0, 0, 0))
+        self.screen.blit(high_score, (10, 50))
+        pygame.display.flip()
 
-        # Check for distance between centers within a threshold
-        collision_threshold = 30  # Adjust this value based on image sizes
-        for i in range(len(fruit_center_x_list)):
-            distance_x = abs(basket_center_x - fruit_center_x_list[i])
-            distance_y = abs(basket_center_y - fruit_center_y_list[i])
-            if distance_x < collision_threshold and distance_y < collision_threshold:
-                return True
+    def playBackGround(self):
+        pygame.mixer.music.load("resources/bg_music_1.mp3")
+        pygame.mixer.music.play(-1, 0)  # Play endlessly from the beginning
 
-        return False
+    def playSound(self, sound):
+        if sound == "ding":
+            sound = pygame.mixer.Sound("resources/ding.mp3")
+            pygame.mixer.Sound.play(sound)
+        elif sound == "crash":
+            sound = pygame.mixer.Sound("resources/crash.mp3")
+            pygame.mixer.Sound.play(sound)
 
+    def showGameOver(self):
+        font = pygame.font.SysFont('arial', 40)
+        text = font.render("GAME OVER!", True, (100, 90, 200))
+        self.screen.blit(text, (50, 100))
         
-    def posUpdate(self):
-        self.parentScreen.blit(self.img,(self.x,self.y))
-        pygame.display.update()
+    # Clear instructions for restarting or exiting
+        text = font.render("Press Enter to play", True, (0, 0, 0))
+        self.screen.blit(text, (20, 200))  # Improved positioning for better visibility
+        text1=font.render("Press Esc to exit", True, (0, 0, 0))
+        self.screen.blit(text1, (20, 300))
+        if self.score > self.high_score:
+            self.high_score = self.score
+            self.save_high_score()
     
-    def render(self):
-        self.screen.fill((200,250,180))
-        self.basket.draw()
-        self.fruit1.draw()
-        # self.fruit2.draw()
-        # self.fruit3.draw()
-        # self.fruit4.draw()
-        # self.fruit5.draw()
-        pygame.display.update()
-        self.clock = pygame.time.Clock()
+        self.displayHighScore()  # Separate function for displaying high score
+        
+        pygame.display.flip()
+        pygame.mixer.music.pause()
 
-       
+    def displayHighScore(self):
+        font = pygame.font.SysFont('arial', 30)
+        high_score_text = font.render(f"High Score: {self.high_score}", True, (0, 0, 0))
+        self.screen.blit(high_score_text, (50, 250))
+
+    def isCollide(self, obj):
+        distance = math.sqrt((self.basket.xCenter - obj.fruitXcenter) ** 2 + (self.basket.yCenter - obj.fruitYcenter) ** 2)
+        return distance < (FRUIT_RADIUS + self.basket.img.get_width() // 2)
+
+    def isBombCollide(self):
+        distance = math.sqrt((self.basket.xCenter - self.bomb.bombXcenter) ** 2 + (self.basket.yCenter - self.bomb.bombYcenter) ** 2)
+        return distance < (BOMB_RADIUS + self.basket.img.get_width() // 2)
+
+    def increaseScore(self):
+        for fruit in self.fruits:
+            if self.isCollide(fruit):
+                self.score += 1
+                self.playSound("ding")
+                
+                fruit.fruitY = 0
+                fruit.fruitX = random.randint(0, SCREEN_WIDTH - fruit.img.get_width())
+
+    def render(self):
+        self.screen.fill((200, 250, 180))
+        self.basket.draw()
+        for fruit in self.fruits:
+            fruit.draw()
+        self.bomb.draw()
+        self.displayScore()
+        pygame.display.update()
+
+    def moveFruitsDown(self):
+        for fruit in self.fruits:
+            fruit.moveDown()
+        self.bomb.moveDown()
+
+    def handleEvents(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit(1)
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                    exit(0)
+                if event.key == pygame.K_RIGHT:
+                    self.basket.moveRight()
+                if event.key == pygame.K_LEFT:
+                    self.basket.moveLeft()
+                if self.game_over:
+                    if event.key == pygame.K_RETURN:
+                        self.reset()
+
     def run(self):
-        print("Run entered")
-        running=True
+        clock = pygame.time.Clock()
+        running = True
         while running:
-            self.screen.fill((200,250,180))
-            self.fruit1.moveDown()
-            # self.fruit2.moveDown()
-            # self.fruit3.moveDown()
-            # self.fruit4.moveDown()
-            # self.fruit5.moveDown()
-            
-            #if pygame.event()==pygame.KEYDOWN():
-            for event in pygame.event.get():
-                if event.type==pygame.QUIT:
-                    pygame.quit()            
-                    exit(1)
-                if event.type==pygame.KEYDOWN:
-                    if event.key==pygame.K_ESCAPE:
-                        running=False
-                    if event.key==pygame.K_RETURN:
-                        running=True
-                    if event.key==pygame.K_RIGHT:
-                        self.basket.moveRight()
-                    if event.key==pygame.K_LEFT:
-                        self.basket.moveLeft()
-            self.fruit1.moveDown()
-            # self.fruit2.moveDown()
-            # self.fruit3.moveDown()
-            # self.fruit4.moveDown()
-            # self.fruit5.moveDown()
-            self.IncreaseScore(self.score)
+            self.handleEvents()
+            if not self.game_over:
+                self.moveFruitsDown()
+                self.increaseScore()
+                if self.isBombCollide():
+                    self.playSound("crash")
+                    self.showGameOver()
+                    pygame.display.flip()
+                    time.sleep(3)
+                    self.game_over = True
             self.render()
-            self.clock.tick(30)
+            clock.tick(30)
+
 def main():
-    game=Game()
+    game = Game()
     game.run()
-if __name__=="__main__":
+
+if __name__ == "__main__":
     main()
